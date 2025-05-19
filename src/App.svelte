@@ -1,4 +1,6 @@
 <script>
+// @ts-nocheck
+
   import svelteLogo from './assets/svelte.svg'
   import viteLogo from '/vite.svg'
   import Counter from './lib/Counter.svelte'
@@ -7,7 +9,37 @@
   let progress = 0;
   let total = 0;
   let message = "";
+  let error = "";
   let done = false;
+  let file = null;
+  let result = "Belum ada prosess";
+
+  async function importBeneran() {
+    if (!file) {
+      // alert("Pilih file dulu, bro.");
+      result = "Pilih file dulu, bro.";
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("http://localhost:8000/api/v1/import/csv", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+      console.log("Response:", data);
+      // alert(data.message || "Upload selesai.");
+      result = data.message || "Upload selesai.";
+    } catch (err) {
+      console.error("Upload error:", err);
+      // alert("Gagal upload file.");
+      result = "Gagal upload file.";
+    }
+  }
 
   onMount(() => {
       const ws = new WebSocket("ws://localhost:8000/api/v1/generic/ws/");
@@ -22,7 +54,12 @@
           }
 
           if (msg.event === "import_done") {
-              message = "Import selesai!";
+              message = msg.data.message;
+              done = true;
+          }
+          if (msg.event === "import_error") {
+              message = msg.data.message;
+              error = msg.data.error;
               done = true;
           }
       };
@@ -101,6 +138,12 @@
     </div>
 
     <p class="mt-2">{message}</p>
+    <p class="mt-2">{error}</p>
+
+    <input type="file" on:change="{(e) => file = e.target.files[0]}" accept=".csv" />
+    <button on:click="{importBeneran}">Upload CSV</button>
+
+    <p>{result}</p>
 </div>
   <p>
     Check out <a href="https://github.com/sveltejs/kit#readme" target="_blank" rel="noreferrer">SvelteKit</a>, the official Svelte app framework powered by Vite!
